@@ -13,6 +13,11 @@
   --stage-bg: #d9f1ff;
   --stage-accent: #ff6b91;
   --stage-glow: rgba(255, 221, 69, 0.8);
+  --shell-bg-top: #f2fbff;
+  --shell-bg-bottom: #d9f1ff;
+  --scene-bg-top: #ffffff;
+  --scene-bg-mid: #e6f6ff;
+  --scene-bg-bottom: #c8e7ff;
   --shadow: 0 14px 28px rgba(221, 108, 64, 0.2);
   --soft-shadow: 0 8px 0 rgba(164, 91, 43, 0.18);
 }
@@ -57,8 +62,7 @@ button {
   margin: 0 auto;
   padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
   overflow: hidden;
-  background-color: var(--stage-bg);
-  transition: background-color 220ms ease;
+  background: linear-gradient(180deg, var(--shell-bg-top), var(--shell-bg-bottom));
 }
 
 html.is-mobile-scale .game-shell {
@@ -352,29 +356,14 @@ h2 {
     radial-gradient(circle at 28% 82%, rgba(255, 255, 255, 0.42) 0 12%, transparent 13%),
     linear-gradient(
       180deg,
-      #fff8d9 0%,
-      #ffe572 16%,
-      #c8f7d1 32%,
-      #ffd6a3 48%,
-      #ffd5e8 62%,
-      #bcd8ff 76%,
-      #baf3ff 88%,
-      #ffd889 100%
+      var(--scene-bg-top) 0%,
+      var(--scene-bg-top) 18%,
+      var(--scene-bg-mid) 56%,
+      var(--scene-bg-bottom) 100%
     );
-  background-position:
-    0 0,
-    0 0,
-    0 0,
-    0 var(--scene-shift);
-  background-size:
-    auto,
-    auto,
-    auto,
-    100% 180%;
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
-  transition: background-position 320ms ease;
 }
 
 .scene-hud {

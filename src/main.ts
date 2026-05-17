@@ -170,6 +170,7 @@ let animationFrameId = 0;
 let lastFrameTime = performance.now();
 let remoteClearRequestToken = 0;
 let cameraOffset = 0;
+let sceneVisualHeight = 0;
 let towerSwayPhase = 0;
 let gameplayBgm: HTMLAudioElement | null = null;
 const oneshotAudioTemplates = new Map<AudioKey, HTMLAudioElement>();
@@ -624,12 +625,102 @@ const getRemoteClearText = () => {
   return "暂未通关";
 };
 
-const getThemeCssText = () => {
+type RgbColor = {
+  r: number;
+  g: number;
+  b: number;
+};
+
+const parseHexColor = (value: string): RgbColor => {
+  const normalized = value.trim().replace("#", "");
+  const expanded =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((character) => character + character)
+          .join("")
+      : normalized;
+
+  if (!/^[\da-fA-F]{6}$/.test(expanded)) {
+    throw new Error(`Unsupported color format: ${value}`);
+  }
+
+  return {
+    r: Number.parseInt(expanded.slice(0, 2), 16),
+    g: Number.parseInt(expanded.slice(2, 4), 16),
+    b: Number.parseInt(expanded.slice(4, 6), 16)
+  };
+};
+
+const toHexByte = (value: number) => Math.round(Math.min(255, Math.max(0, value))).toString(16).padStart(2, "0");
+
+const mixHexColor = (fromColor: string, toColor: string, progress: number) => {
+  const from = parseHexColor(fromColor);
+  const to = parseHexColor(toColor);
+  const ratio = Math.min(1, Math.max(0, progress));
+  return `#${toHexByte(from.r + (to.r - from.r) * ratio)}${toHexByte(from.g + (to.g - from.g) * ratio)}${toHexByte(from.b + (to.b - from.b) * ratio)}`;
+};
+
+const getThemeBlendForHeight = (height: number) => {
+  const sortedNodes = [...progressNodes].sort((a, b) => a.heightRequired - b.heightRequired);
+  const normalizedHeight = Math.max(0, height);
+
+  if (sortedNodes.length <= 1 || normalizedHeight <= sortedNodes[0].heightRequired) {
+    const node = sortedNodes[0];
+    return {
+      fromNode: node,
+      toNode: node,
+      progress: 0
+    };
+  }
+
+  for (let index = 0; index < sortedNodes.length - 1; index += 1) {
+    const fromNode = sortedNodes[index];
+    const toNode = sortedNodes[index + 1];
+
+    if (normalizedHeight <= toNode.heightRequired) {
+      const range = toNode.heightRequired - fromNode.heightRequired;
+      const progress = range <= 0 ? 1 : (normalizedHeight - fromNode.heightRequired) / range;
+      return {
+        fromNode,
+        toNode,
+        progress: Math.min(1, Math.max(0, progress))
+      };
+    }
+  }
+
+  const lastNode = sortedNodes[sortedNodes.length - 1];
+  return {
+    fromNode: lastNode,
+    toNode: lastNode,
+    progress: 1
+  };
+};
+
+const getInterpolatedThemeColors = (height: number) => {
+  const { fromNode, toNode, progress } = getThemeBlendForHeight(height);
+  return {
+    backgroundColor: mixHexColor(
+      fromNode.theme.backgroundGradient,
+      toNode.theme.backgroundGradient,
+      progress
+    ),
+    accentColor: mixHexColor(fromNode.theme.accentColor, toNode.theme.accentColor, progress)
+  };
+};
+
+const getThemeCssText = (height = sceneVisualHeight) => {
   const stage = getBuildingByTheme(state.currentThemeId);
+  const { backgroundColor, accentColor } = getInterpolatedThemeColors(height);
   return [
-    `--stage-bg: ${stage.theme.backgroundGradient}`,
-    `--stage-accent: ${stage.theme.accentColor}`,
-    `--stage-glow: ${stage.theme.glowColor}`
+    `--stage-bg: ${backgroundColor}`,
+    `--stage-accent: ${accentColor}`,
+    `--stage-glow: ${stage.theme.glowColor}`,
+    `--shell-bg-top: ${mixHexColor(backgroundColor, "#ffffff", 0.7)}`,
+    `--shell-bg-bottom: ${mixHexColor(backgroundColor, accentColor, 0.14)}`,
+    `--scene-bg-top: ${mixHexColor(backgroundColor, "#ffffff", 0.82)}`,
+    `--scene-bg-mid: ${mixHexColor(backgroundColor, accentColor, 0.1)}`,
+    `--scene-bg-bottom: ${mixHexColor(backgroundColor, accentColor, 0.3)}`
   ].join("; ");
 };
 
@@ -730,6 +821,7 @@ const getFeverDecayPerSecond = () =>
 
 state = createInitialState();
 cameraOffset = getCameraTargetOffsetForHeight(state.height);
+sceneVisualHeight = state.height;
 
 const getSwingCraneRig = (time: number): CraneRig => {
   const ropeAngle = getCurrentSwingAngle(time);
@@ -741,8 +833,6 @@ const getSwingCraneRig = (time: number): CraneRig => {
 };
 
 const getActiveCraneRig = () => getSwingCraneRig(lastFrameTime);
-
-const getSceneShift = () => `${Math.round((state.height / winLevel) * 100)}%`;
 
 const getFeverRatio = () => clamp(state.feverValue / feverMaxValue, 0, 1);
 
@@ -890,6 +980,10 @@ const finishDrop = () => {
     localStorage.setItem(storageKeys.baseProgress, String(getUpdatedBaseProgressStep(nextHeight)));
   }
 
+  if (isWon || isGameOver) {
+    sceneVisualHeight = nextHeight;
+  }
+
   persistProgress(state);
   render();
 
@@ -953,6 +1047,7 @@ const resetGame = () => {
   stopGameplayBgm();
   state = createInitialState();
   cameraOffset = getCameraTargetOffsetForHeight(state.height);
+  sceneVisualHeight = state.height;
   towerSwayPhase = 0;
   persistProgress(state);
   render();
@@ -1116,7 +1211,7 @@ const renderScene = () => {
       aria-label="学院叠叠乐施工场景"
       data-action="release"
       data-scene-card
-      style="--scene-shift: ${getSceneShift()}; --camera-offset: ${cameraOffset}px; --crane-offset: ${getCraneOffset()}px;"
+      style="--camera-offset: ${cameraOffset}px; --crane-offset: ${getCraneOffset()}px;"
     >
       ${renderSceneHud()}
       ${renderStageGuide()}
@@ -1325,6 +1420,7 @@ const updateLiveElements = (time: number, deltaSeconds: number) => {
 
   const currentBlockElement = document.querySelector<HTMLElement>("[data-current-block]");
   const craneElement = document.querySelector<HTMLElement>("[data-crane]");
+  const gameShellElement = document.querySelector<HTMLElement>(".game-shell");
   const sceneCardElement = document.querySelector<HTMLElement>("[data-scene-card]");
   const stageGuideElement = document.querySelector<HTMLElement>("[data-stage-guide]");
   const towerStackElement = document.querySelector<HTMLElement>("[data-tower-stack]");
@@ -1335,6 +1431,7 @@ const updateLiveElements = (time: number, deltaSeconds: number) => {
   if (
     !currentBlockElement ||
     !craneElement ||
+    !gameShellElement ||
     !sceneCardElement ||
     !stageGuideElement ||
     !towerStackElement ||
@@ -1360,6 +1457,8 @@ const updateLiveElements = (time: number, deltaSeconds: number) => {
   const targetCameraOffset = getCameraTargetOffset();
   const cameraLerp = 1 - Math.exp(-deltaSeconds * 7);
   cameraOffset += (targetCameraOffset - cameraOffset) * cameraLerp;
+  sceneVisualHeight += (state.height - sceneVisualHeight) * cameraLerp;
+  gameShellElement.style.cssText = getThemeCssText(sceneVisualHeight);
   sceneCardElement.style.setProperty("--camera-offset", `${cameraOffset}px`);
   sceneCardElement.style.setProperty("--crane-offset", `${getCraneOffset()}px`);
   stageGuideElement.style.bottom = `${getStageGuideBottom(cameraOffset)}px`;
