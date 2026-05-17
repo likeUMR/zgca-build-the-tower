@@ -194,7 +194,7 @@
 - 基础人数：`baseCapacity = 20 + height * 2`
 - 重合倍率：`overlapMultiplier = 0.6 + overlapRatio * 0.8`
 - 连续 Perfect 加成：`perfectBonus = perfectCombo * 5`
-- 单层得分：`floorCapacity = round(baseCapacity * overlapMultiplier + perfectBonus)`
+- 单层得分：`floorCapacity = floor((baseCapacity * overlapMultiplier + perfectBonus) / 5)`
 
 结果包装：
 
@@ -329,7 +329,7 @@
 
 - 点击屏幕，释放吊机上的学院模块。
 - 模块越对齐，容纳人数越高，塔楼越稳定。
-- 累计 3 次施工偏差，建塔挑战失败。
+- 累计 3 次 miss，挑战失败。
 - 建到 C9，完成中关村学院建设。
 
 ### 7.6 结算文案
@@ -343,7 +343,7 @@
 失败：
 
 - 眉标：`建设中止`
-- 标题：`施工偏差达到 3 次`
+- 标题：`累计 3 次 miss，挑战失败`
 - 正文：`本次学院可容纳 X 人，再来一次，把塔楼叠得更稳。`
 
 ## 8. 反馈与表现

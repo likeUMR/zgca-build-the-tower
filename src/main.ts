@@ -1,6 +1,7 @@
 import "./styles.css";
 import { buildingConfig, progressNodes, winLevel, type BuildingConfigItem } from "./buildingConfig";
 import { getBuildingIntro } from "./buildingIntroConfig";
+import { evaluateLanding } from "./landingEngine";
 
 type JudgeResult = "perfect" | "good" | "miss";
 type DropMode = "hanging" | "falling";
@@ -705,6 +706,11 @@ const getFeverDecayScale = () =>
 const getTowerSwaySpeed = () =>
   (baseTowerSwaySpeed + towerSwaySpeedMaxBonus * getDifficultyRamp()) * getDifficultyScale();
 
+const getTowerSwayTransform = () => {
+  const sway = Math.sin(towerSwayPhase) * getTowerSway();
+  return `translateX(${sway}px) rotate(${sway / 28}deg)`;
+};
+
 const getCraneSwingSpeed = () =>
   (baseCraneSwingSpeed +
     craneSwingSpeedMaxBonus * getDifficultyRamp() +
@@ -754,7 +760,7 @@ const calculateCapacityGain = (
   const overlapMultiplier = 0.6 + overlapRatio * 0.8;
   const perfectBonus = perfectCombo * 5;
   const totalCapacity = baseCapacity * overlapMultiplier + perfectBonus;
-  return Math.round(totalCapacity * (isFeverActive ? feverScoreMultiplier : 1));
+  return Math.floor((totalCapacity * (isFeverActive ? feverScoreMultiplier : 1)) / 5);
 };
 
 const judgeDrop = () => {
@@ -762,6 +768,29 @@ const judgeDrop = () => {
 
   if (!topBlock) {
     return { result: "perfect" as JudgeResult, overlapRatio: 1, placedX: state.currentBlock.x };
+  }
+
+  const sceneCardElement = document.querySelector<HTMLElement>("[data-scene-card]");
+  const towerStackElement = document.querySelector<HTMLElement>("[data-tower-stack]");
+
+  if (sceneCardElement && towerStackElement) {
+    const landingEvaluation = evaluateLanding({
+      sceneElement: sceneCardElement,
+      towerElement: towerStackElement,
+      currentBlockX: state.currentBlock.x,
+      currentBlockWidth: state.currentBlock.width,
+      supportBlockX: topBlock.x,
+      supportBlockWidth: topBlock.width,
+      nextBlockIndex: state.towerBlocks.length,
+      blockHeight,
+      cameraOffset,
+      perfectSnapToleranceRatio,
+      missOverlapThreshold
+    });
+
+    if (landingEvaluation) {
+      return landingEvaluation;
+    }
   }
 
   const supportWidth = topBlock.width;
@@ -1123,7 +1152,10 @@ const renderScene = () => {
       <div
         class="tower-stack"
         data-tower-stack
-        style="--tower-sway: ${getTowerSway()}px;"
+        style="
+          --tower-sway: ${getTowerSway()}px;
+          transform: ${getTowerSwayTransform()};
+        "
       >
         ${renderTowerBlocks()}
       </div>
@@ -1158,7 +1190,7 @@ const renderOverlay = () => {
     <div class="overlay">
       <div class="result-card">
         <p class="eyebrow">${state.isWon ? "建设完成" : "建设中止"}</p>
-        <h2>${state.isWon ? "解锁 C9，学院建成！" : "施工偏差达到 3 次"}</h2>
+        <h2>${state.isWon ? "解锁 C9，学院建成！" : "累计 3 次 miss，挑战失败"}</h2>
         <p>${
           state.isWon
             ? `你已经完成中关村学院的建设挑战，本次学院可容纳 ${state.capacity} 人。`
@@ -1182,7 +1214,7 @@ const renderTutorial = () => {
         <h2>欢迎来到中关村学院建大楼</h2>
         <p>点击屏幕，释放吊机上的学院模块。</p>
         <p>模块越对齐，容纳人数越高，塔楼越稳定。</p>
-        <p>累计 3 次施工偏差，建塔挑战失败。</p>
+        <p>累计 3 次 miss，挑战失败。</p>
         <div class="tutorial-pad-hint">
           <span class="tutorial-icon">C9</span>
           <span>建到 C9，完成中关村学院建设。</span>
@@ -1348,14 +1380,13 @@ const updateLiveElements = (time: number, deltaSeconds: number) => {
   }
 
   towerSwayPhase += deltaSeconds * 1000 * getTowerSwaySpeed();
-  const sway = Math.sin(towerSwayPhase) * getTowerSway();
 
   currentBlockElement.style.left = `${state.currentBlock.x}px`;
   currentBlockElement.style.top = `${state.currentBlock.y}px`;
   const craneRig = getActiveCraneRig();
   craneElement.style.setProperty("--rope-angle", `${-craneRig.ropeAngle}rad`);
   craneElement.style.setProperty("--rope-length", `${craneRig.ropeLength}px`);
-  towerStackElement.style.transform = `translateX(${sway}px) rotate(${sway / 28}deg)`;
+  towerStackElement.style.transform = getTowerSwayTransform();
 };
 
 const maybeAutoPlay = () => {
