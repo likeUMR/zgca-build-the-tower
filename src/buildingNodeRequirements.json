@@ -1,0 +1,37 @@
+[
+  {
+    "id": "c1",
+    "level": 1,
+    "heightRequired": 2
+  },
+  {
+    "id": "c2",
+    "level": 4,
+    "heightRequired": 4
+  },
+  {
+    "id": "c3",
+    "level": 8,
+    "heightRequired": 8
+  },
+  {
+    "id": "c5",
+    "level": 12,
+    "heightRequired": 16
+  },
+  {
+    "id": "c7",
+    "level": 17,
+    "heightRequired": 32
+  },
+  {
+    "id": "c8",
+    "level": 23,
+    "heightRequired": 64
+  },
+  {
+    "id": "c9",
+    "level": 30,
+    "heightRequired": 128
+  }
+]
