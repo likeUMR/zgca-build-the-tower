@@ -128,8 +128,8 @@ const audioAssetPaths = {
   uiButtonTap: resolveAudioAssetPath("ui-button-tap.mp3"),
   uiPopupOpen: resolveAudioAssetPath("ui-popup-open.mp3"),
   gameBlockRelease: resolveAudioAssetPath("game-block-release.mp3"),
-  gameBlockLandGood: resolveAudioAssetPath("game-block-land-good.mp3"),
-  gameBlockLandPerfect: resolveAudioAssetPath("game-block-land-perfect.mp3"),
+  gameBlockLandGood: resolveAudioAssetPath("game-block-land-perfect.mp3"),
+  gameBlockLandPerfect: resolveAudioAssetPath("game-block-land-good.mp3"),
   gameBlockMissFall: resolveAudioAssetPath("game-block-miss-fall.mp3"),
   gameUnlockStage: resolveAudioAssetPath("game-unlock-stage.mp3"),
   gameFeverActivate: resolveAudioAssetPath("game-fever-activate.mp3"),
@@ -989,6 +989,7 @@ const finishDrop = () => {
 
   if (result === "perfect") {
     playAudio("gameBlockLandPerfect");
+    playAudio("gameBlockLandGood");
   } else if (result === "good") {
     playAudio("gameBlockLandGood");
   } else {
